@@ -5,6 +5,8 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     database_url:str = "postgresql://postgres@localhost:5432/currency_db"
     exchange_api_url:str ="https://open.er-api.com/v6/latest/USD"
+    redis_host: str ="localhost"
+    redis_port: int = 6379
     class Config:
         env_file =".env"
 
