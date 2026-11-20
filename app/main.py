@@ -4,11 +4,15 @@ from fastapi.templating import Jinja2Templates
 import uvicorn
 from pydantic import BaseModel
 
-from app.database import check_db_connection
+from app.database import check_db_connection,engine,Base
+from app import models
+
 from app.exchange import fetch_rates
 
 app = FastAPI()
 templates = Jinja2Templates(directory="app/templates")
+
+models.Base.metadata.create_all(bind=engine)
 
 class ConvertRequest(BaseModel):
     amount: float
