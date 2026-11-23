@@ -1,7 +1,8 @@
 from datetime import datetime, timezone, timedelta
 from typing import Annotated
 import jwt
-from passlib.context import CryptContext
+from dns.dnssecalgs import algorithms
+from passlib.context import Cryptcontext
 from fastapi import Depends,HTTPException,status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -43,3 +44,38 @@ def get_db():
     finally:
         db.close()
 
+# Проверка токена
+def get_current_user(
+        token:Annotated[str,Depends(oauth2_scheme)],
+        db:Annotated[Session,Depends(get_db)]
+)-> models.User:
+    credentials_exception=HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Не удалось проверить учетные данные",
+        headers={"WWW-Authenticate":"Bearer"}
+    )
+    # Здесь происходит расшифровка токена
+    try:
+        payload = jwt.encode(
+            token,
+            settings.secret_key,
+            algorithms=[settings.algorithm]
+        )
+        user_id_str: str|None=payload.get("sub")
+        if user_id_str is None:
+            raise credentials_exception
+        user_id = int(user_id_str)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Срок действия токена истек",
+            headers={"WWW-Authenticate":"Bearer"},
+        )
+    except jwt.InvalidTokenError:
+        raise credentials_exception
+
+    user = db.query(models.User).filter(models.User.id==user_id).first()
+
+    if user is None:
+        raise credentials_exception
+    return user
